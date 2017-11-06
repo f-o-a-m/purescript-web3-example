@@ -8,7 +8,14 @@
   },
   "scripts": {
     "psc-package": "psc-package update",
-    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis build/contracts --dest src --truffle true ; rm generator.js"
+    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis contracts --dest src ; rm generator.js"
+  },
+  "dependencies": {
+    "bignumber.js": "git+https://github.com/frozeman/bignumber.js-nolookahead.git",
+    "crypto-js": "^3.1.8",
+    "pulp": "^12.0.0",
+    "yargs": "^8.0.2",
+    "web3": "^0.19.1"
   },
   "author": "",
   "license": "ISC"
