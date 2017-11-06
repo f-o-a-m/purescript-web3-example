@@ -8,6 +8,9 @@
         "eff",
         "node-fs-aff",
         "string-parsers",
+        "react-material-ui",
+        "react",
+        "thermite",
         "web3",
         "web3-generator"
     ]

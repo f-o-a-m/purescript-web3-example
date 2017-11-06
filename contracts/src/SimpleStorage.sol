@@ -1,6 +1,6 @@
 contract SimpleStorage {
     
-    uint count;
+    uint public count;
     
     event NewCount(uint _count);
     
