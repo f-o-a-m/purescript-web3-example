@@ -1,0 +1,15 @@
+{
+  "name": "purescript-web3-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "psc-package": "psc-package update",
+    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis build/contracts --dest src --truffle true ; rm generator.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
