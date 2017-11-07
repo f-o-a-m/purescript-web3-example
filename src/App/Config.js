@@ -1,1 +1,1 @@
-exports._simpleStorageAddress = "6c7d76f7814b0f8aba787a7f7653770e33ca2369";
+exports._simpleStorageAddress = "0c83ac7ccbe58fbb15236c0b6a0840f0837b2843";

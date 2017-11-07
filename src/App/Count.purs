@@ -4,7 +4,7 @@ import Prelude
 
 import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
-import Control.Monad.Aff (launchAff)
+import Control.Monad.Aff (Milliseconds(..), delay, launchAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Reader (ReaderT)
 import Data.Maybe (Maybe(..))
@@ -37,7 +37,9 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
     monitorCount :: R.ComponentDidMount CountStateProps CountState (eth :: ETH | eff)
     monitorCount this = void $ do
       props <- R.getProps this
-      launchAff <<< runWeb3 $
+      launchAff do
+        delay (Milliseconds 1000.0)
+        void $ runWeb3 $
         event Config.config.simpleStorageAddress $ \(SimpleStorage.NewCount _count) -> do
           _ <- liftEff <<< R.transformState this $ _{currentCount= show _count}
           liftEff $ props.statusCallback "Transaction succeded, enter new count."
