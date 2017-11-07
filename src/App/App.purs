@@ -18,11 +18,9 @@ appSpec = T.simpleSpec performAction render
   where
     render dispatch _ state _ =
       let props = {statusCallback: dispatch <<< UpdateStatus}
-      in [ D.div [P.className ""]
-           [ D.text state.status
-           , R.createFactory countWatchClass props
-           , R.createFactory countFormClass props
-           ]
+      in [ D.div [P.className "status-bar"] [D.text state.status]
+         , R.createFactory countWatchClass props
+         , R.createFactory countFormClass props
          ]
 
     performAction (UpdateStatus status) _ st = void <<< T.modifyState $ _{status=status}

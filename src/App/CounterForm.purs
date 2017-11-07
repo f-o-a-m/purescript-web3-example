@@ -61,13 +61,14 @@ countFormSpec = T.simpleSpec performAction render
     render :: T.Render CountFormState CountFormProps CountFormAction
     render dispatch props state _ =
       [ D.div [P.className ""]
-         [ D.h3 [P.className ""]
+         [ D.h3 [P.className "error-message-container"]
            [D.text state.errorMessage]
-         , D.form [P.className ""]
+         , D.form [P.className "count-form"]
            [ D.div'
              [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
                                       dispatch (UpdateAddress (unsafeCoerce e).target.value))
                                  <> TextField.hintText := stringNode "0xdeadbeef"
+                                 <> TextField.fullWidth := true
                                  <> TextField.floatingLabelText := stringNode "User Address"
                                  <> TextField.value := UnknownType (toForeign state.userAddress)
                                  ) []
@@ -76,14 +77,20 @@ countFormSpec = T.simpleSpec performAction render
              [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
                                       dispatch (UpdateCount (unsafeCoerce e).target.value))
                                  <> TextField.hintText := stringNode "123"
+                                 <> TextField.fullWidth := true
                                  <> TextField.floatingLabelText := stringNode "New Count"
                                  <> TextField.value := UnknownType (toForeign state.count)
                                  ) []
              ]
-            , RaisedButton.raisedButton ( RaisedButton.backgroundColor := "blue"
-                                         <> RaisedButton.primary := true
-                                         <> RaisedButton.onClick := (EventHandlerOpt <<< R.handle $ \_ -> dispatch Submit)
-                                        ) [ D.text "Submit Count"]
+            , D.div [P.className "submit-button-container"]
+              [ RaisedButton.raisedButton ( RaisedButton.onClick := (EventHandlerOpt <<< R.handle $ \_ -> dispatch Submit)
+                                          <> RaisedButton.backgroundColor := "#2196F3"
+                                          <> RaisedButton.fullWidth := true
+                                        ) [ D.div
+                                            [ P.className "submit-button-text" ]
+                                            [ D.text "Submit" ]
+                                          ]
+              ]
             ]
          ]
       ]
