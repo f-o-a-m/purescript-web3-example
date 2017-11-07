@@ -1,7 +1,9 @@
 module Main where
 
 import Prelude
+
 import App.App (appClass)
+import App.MaterialUI (muiThemeProviderClass)
 import Control.Monad.Eff (Eff)
 import DOM (DOM)
 import DOM.HTML (window)
@@ -14,7 +16,6 @@ import Partial.Unsafe (unsafePartial)
 import React as R
 import ReactDOM (render)
 
-foreign import muiThemeProviderClass :: ∀ props. R.ReactClass props
 
 main :: forall eff. Eff (dom :: DOM | eff) Unit
 main = void (elm' >>= render ui)

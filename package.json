@@ -8,7 +8,12 @@
   },
   "scripts": {
     "psc-package": "psc-package update",
-    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src ; rm generator.js"
+    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src ; rm generator.js",
+    "build": "./node_modules/.bin/pulp browserify --to dist/app.js",
+    "build-css": "node-sass styles/ -o dist/",
+    "watch-css": "npm run build-css && node-sass styles/ -o dist/ --watch --recursive",
+    "webpack": "./node_modules/.bin/webpack --config ./webpack.config.js --progress --profile --colors",
+    "webpack-dev-server": "webpack-dev-server --content-base dist --progress"
   },
   "dependencies": {
     "bignumber.js": "git+https://github.com/frozeman/bignumber.js-nolookahead.git",
@@ -16,11 +21,26 @@
     "crypto-js": "^3.1.8",
     "http-serve": "^1.0.1",
     "material-ui": "^0.18.7",
-    "pulp": "^12.0.0",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "web3": "^0.19.1",
     "yargs": "^8.0.2"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-stage-0": "^6.24.1",
+    "css-loader": "^0.28.7",
+    "html-webpack-plugin": "^2.30.1",
+    "pulp": "^12.0.0",
+    "purescript-psa": "^0.5.1",
+    "purs-loader": "^3.1.2",
+    "webpack": "^3.5.5",
+    "webpack-dev-server": "^2.9.4",
+    "sass-loader": "^6.0.6",
+    "style-loader": "^0.19.0",
+    "node-sass": "^4.6.0",
+    "npm-run-all": "^4.1.2"
   },
   "author": "",
   "license": "ISC"
