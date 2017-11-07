@@ -14,13 +14,14 @@ import Partial.Unsafe (unsafePartial)
 import React as R
 import ReactDOM (render)
 
+foreign import muiThemeProviderClass :: ∀ props. R.ReactClass props
 
 main :: forall eff. Eff (dom :: DOM | eff) Unit
 main = void (elm' >>= render ui)
   where
     ui :: R.ReactElement
-    ui = R.createFactory appClass unit
-
+    ui = R.createElement muiThemeProviderClass unit
+         [R.createFactory appClass unit]
     elm' :: Eff (dom :: DOM | eff) Element
     elm' = do
       win <- window

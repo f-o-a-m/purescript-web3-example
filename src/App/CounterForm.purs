@@ -11,9 +11,14 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Trans.Class (lift)
 import Data.Array ((!!))
 import Data.Either (Either(..))
+import Data.Foreign (toForeign)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Options ((:=))
 import Data.String (drop, take)
 import Data.Tuple (Tuple(..))
+import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
+import MaterialUI.RaisedButton as RaisedButton
+import MaterialUI.TextField as TextField
 import Network.Ethereum.Web3 (Address(..), ETH, HexString(..), Metamask, Value, Web3, Wei, decimal, metamaskProvider, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
@@ -48,6 +53,8 @@ data CountFormAction =
 type CountFormProps =
   { statusCallback :: String -> T.EventHandler }
 
+
+
 countFormSpec :: forall eff . T.Spec (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
 countFormSpec = T.simpleSpec performAction render
   where
@@ -57,27 +64,26 @@ countFormSpec = T.simpleSpec performAction render
          [ D.h3 [P.className ""]
            [D.text state.errorMessage]
          , D.form [P.className ""]
-            [ D.div'
-              [ D.text "User Address: "
-              , D.input [ P._type "text"
-                        , P.placeholder "0xdeadbeef"
-                        , P.onChange \e -> dispatch (UpdateAddress (unsafeCoerce e).target.value)
-                        , P.value state.userAddress
-                        ] []
-              ]
-            , D.div'
-              [ D.text "New Count: "
-              , D.input [ P._type "text"
-                        , P.placeholder "123"
-                        , P.onChange \e -> dispatch (UpdateCount (unsafeCoerce e).target.value)
-                        , P.value state.count
-                        ] []
-              ]
-
-            , D.button [ P._type "button"
-                       , P.className "bold pill blue_bg"
-                       , P.onClick \e -> dispatch Submit
-                       ] [D.text "Deploy Beacon"]
+           [ D.div'
+             [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
+                                      dispatch (UpdateAddress (unsafeCoerce e).target.value))
+                                 <> TextField.hintText := stringNode "0xdeadbeef"
+                                 <> TextField.floatingLabelText := stringNode "User Address"
+                                 <> TextField.value := UnknownType (toForeign state.userAddress)
+                                 ) []
+             ]
+           , D.div'
+             [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
+                                      dispatch (UpdateCount (unsafeCoerce e).target.value))
+                                 <> TextField.hintText := stringNode "123"
+                                 <> TextField.floatingLabelText := stringNode "New Count"
+                                 <> TextField.value := UnknownType (toForeign state.count)
+                                 ) []
+             ]
+            , RaisedButton.raisedButton ( RaisedButton.backgroundColor := "blue"
+                                         <> RaisedButton.primary := true
+                                         <> RaisedButton.onClick := (EventHandlerOpt <<< R.handle $ \_ -> dispatch Submit)
+                                        ) [ D.text "Submit Count"]
             ]
          ]
       ]

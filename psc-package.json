@@ -6,6 +6,8 @@
         "prelude",
         "console",
         "eff",
+        "foreign",
+        "options",
         "node-fs-aff",
         "string-parsers",
         "react-material-ui",
