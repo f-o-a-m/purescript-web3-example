@@ -19,7 +19,7 @@ import Data.Tuple (Tuple(..))
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (Address(..), ETH, HexString(..), Metamask, Value, Web3, Wei, decimal, metamaskProvider, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Web3 (Address(..), ETH, HexString(..), decimal, metamask, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
 import React.DOM as D
@@ -105,8 +105,8 @@ countFormSpec = T.simpleSpec performAction render
       case args of
         Left err -> void <<< T.modifyState $ _{errorMessage = err}
         Right (Tuple sender count) -> void do
-          txHash <- lift $ runWeb3 $
-            SimpleStorage.setCount (Just $ Config.config.simpleStorageAddress) sender (zero :: Value Wei) count :: Web3 Metamask _ _
+          txHash <- lift $ runWeb3 metamask $
+            SimpleStorage.setCount (Just $ Config.config.simpleStorageAddress) sender count
           lift <<< unsafeCoerceAff <<< liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
           T.modifyState $ _{ errorMessage = "", count = ""}
 
@@ -114,7 +114,7 @@ countFormSpec = T.simpleSpec performAction render
 
     performAction (UpdateCount n) _ _ = void <<< T.modifyState $ _{count = n}
 
-countFormClass :: forall props. R.ReactClass CountFormProps
+countFormClass :: R.ReactClass CountFormProps
 countFormClass =
     let {spec} = T.createReactSpec countFormSpec initialCountFormState
     in R.createClass (spec {componentWillMount = completeAddressField})
@@ -133,6 +133,5 @@ parseAddress s =
 
 getUserAddress :: forall eff . Aff (eth :: ETH | eff) (Maybe Address)
 getUserAddress = do
-  mm <- liftEff $ metamaskProvider
-  accounts <- runWeb3 $ eth_getAccounts :: Web3 Metamask eff (Array Address)
+  accounts <- runWeb3 metamask $ eth_getAccounts
   pure $ accounts !! 0

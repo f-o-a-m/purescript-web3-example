@@ -8,7 +8,8 @@
   },
   "scripts": {
     "psc-package": "psc-package update",
-    "postinstall": "npm run psc-package && pulp build -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src ; rm generator.js",
+    "postinstall": "npm run psc-package",
+    "generator": "./node_modules/.bin/pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
     "build": "./node_modules/.bin/pulp browserify --to dist/app.js",
     "build-css": "node-sass styles/ -o dist/",
     "watch-css": "npm run build-css && node-sass styles/ -o dist/ --watch --recursive",

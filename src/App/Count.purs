@@ -6,9 +6,8 @@ import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Monad.Aff (Milliseconds(..), delay, launchAff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Reader (ReaderT)
 import Data.Maybe (Maybe(..))
-import Network.Ethereum.Web3 (CallMode(..), ETH, Metamask, Web3, EventAction(..), event, runWeb3)
+import Network.Ethereum.Web3 (CallMode(..), ETH, EventAction(..), event, metamask, runWeb3)
 import React as R
 import React.DOM as D
 import React.DOM.Props as P
@@ -19,7 +18,7 @@ type CountState = {currentCount :: String}
 type CountStateProps =
   { statusCallback :: String -> T.EventHandler}
 
-countWatchSpec :: forall eff props . R.ReactSpec CountStateProps CountState (eth :: ETH | eff)
+countWatchSpec :: forall eff . R.ReactSpec CountStateProps CountState (eth :: ETH | eff)
 countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getInitialState
                                                     , componentDidMount = monitorCount
                                                     }
@@ -31,7 +30,7 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
 
     getInitialState :: R.ComponentWillMount CountStateProps CountState (eth :: ETH | eff)
     getInitialState this = void <<< launchAff $ do
-      c <- runWeb3 $ SimpleStorage.count Config.config.simpleStorageAddress Nothing Latest :: Web3 Metamask _ _
+      c <- runWeb3 metamask $ SimpleStorage.count Config.config.simpleStorageAddress Nothing Latest
       liftEff $ R.transformState this _{currentCount= show c}
 
     monitorCount :: R.ComponentDidMount CountStateProps CountState (eth :: ETH | eff)
@@ -39,11 +38,11 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
       props <- R.getProps this
       launchAff do
         delay (Milliseconds 1000.0)
-        void $ runWeb3 $
+        void $ runWeb3 metamask $
         event Config.config.simpleStorageAddress $ \(SimpleStorage.NewCount _count) -> do
           _ <- liftEff <<< R.transformState this $ _{currentCount= show _count}
           liftEff $ props.statusCallback "Transaction succeded, enter new count."
-          pure ContinueEvent :: ReaderT _ (Web3 Metamask _) _
+          pure ContinueEvent
 
-countWatchClass :: forall props. R.ReactClass CountStateProps
+countWatchClass :: R.ReactClass CountStateProps
 countWatchClass = R.createClass countWatchSpec
