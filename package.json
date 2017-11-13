@@ -8,7 +8,7 @@
   },
   "scripts": {
     "psc-package": "psc-package update",
-    "postinstall": "npm run psc-package",
+    "postinstall": "npm run psc-package && npm run generator",
     "generator": "./node_modules/.bin/pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
     "build": "./node_modules/.bin/pulp browserify --to dist/app.js",
     "build-css": "node-sass styles/ -o dist/",
