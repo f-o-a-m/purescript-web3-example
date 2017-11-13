@@ -1,5 +1,11 @@
-module Config where
+module Config (config) where
 
-import Network.Ethereum.Web3 (Address)
+import Prelude
+import Data.Maybe (fromJust)
+import Network.Ethereum.Web3 (Address, mkHexString, mkAddress)
+import Partial.Unsafe (unsafePartial)
 
-foreign import config :: {simpleStorageAddress :: Address }
+foreign import simpleStorageAddr :: String
+
+config :: {simpleStorageAddress :: Address }
+config = {simpleStorageAddress: unsafePartial fromJust $ mkAddress =<< mkHexString simpleStorageAddr}

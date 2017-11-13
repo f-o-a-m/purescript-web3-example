@@ -1,3 +1,1 @@
-exports.config = {
-    simpleStorageAddress: process.env.SIMPLE_STORAGE_ADDRESS
-};
+exports.simpleStorageAddr = process.env.SIMPLE_STORAGE_ADDRESS;

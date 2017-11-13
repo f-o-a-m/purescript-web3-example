@@ -14,12 +14,11 @@ import Data.Either (Either(..))
 import Data.Foreign (toForeign)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Options ((:=))
-import Data.String (drop, take)
 import Data.Tuple (Tuple(..))
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (Address(..), ETH, HexString(..), decimal, metamask, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Web3 (ETH, Address, decimal, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
 import React.DOM as D
@@ -99,7 +98,7 @@ countFormSpec = T.simpleSpec performAction render
 
     performAction Submit props st = do
       let args = do
-            let addr = parseAddress st.userAddress
+            addr <- note "Please enter a valid ethereum address" $ mkAddress =<< mkHexString st.userAddress
             count <- note "Please enter a valid uint256." $ uIntNFromBigNumber =<<  parseBigNumber decimal st.count
             pure $ Tuple addr count
       case args of
@@ -124,12 +123,6 @@ countFormClass =
       liftEff $ maybe (pure unit) (\a -> void $ R.transformState this $ _{userAddress = show a}) maddr
 
 --------------------------------------------------------------------------------
-
-parseAddress :: String -> Address
-parseAddress s =
-  if take 2 s == "0x"
-    then Address <<<  HexString <<< drop 2 $ s
-    else Address <<< HexString $ s
 
 getUserAddress :: forall eff . Aff (eth :: ETH | eff) (Maybe Address)
 getUserAddress = do
