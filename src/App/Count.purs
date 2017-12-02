@@ -39,8 +39,8 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
       launchAff do
         delay (Milliseconds 1000.0)
         void $ runWeb3 metamask $
-        event Config.config.simpleStorageAddress $ \(SimpleStorage.NewCount _count) -> do
-          _ <- liftEff <<< R.transformState this $ _{currentCount= show _count}
+        event Config.config.simpleStorageAddress $ \(SimpleStorage.CountSet cs) -> do
+          _ <- liftEff <<< R.transformState this $ _{currentCount= show cs._count}
           liftEff $ props.statusCallback "Transaction succeded, enter new count."
           pure ContinueEvent
 

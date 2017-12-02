@@ -115,7 +115,7 @@ countFormSpec = T.simpleSpec performAction render
 
 countFormClass :: R.ReactClass CountFormProps
 countFormClass =
-    let {spec} = T.createReactSpec countFormSpec initialCountFormState
+    let {spec} = T.createReactSpec countFormSpec (const $ pure initialCountFormState)
     in R.createClass (spec {componentWillMount = completeAddressField})
   where
     completeAddressField this = void <<< launchAff $ do

@@ -26,4 +26,4 @@ appSpec = T.simpleSpec performAction render
     performAction (UpdateStatus status) _ st = void <<< T.modifyState $ _{status=status}
 
 appClass :: forall props. R.ReactClass props
-appClass = T.createClass appSpec {status: "Please enter a count."}
+appClass = T.createClass appSpec (const $ pure {status: "Please enter a count."})
