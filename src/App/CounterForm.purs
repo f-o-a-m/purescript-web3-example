@@ -15,16 +15,20 @@ import Data.Foreign (toForeign)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Options ((:=))
 import Data.Tuple (Tuple(..))
+import Network.Ethereum.Web3.Api (personal_sign)
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (ETH, Address, decimal, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Web3 (ETH, Address, decimal, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber, sha3)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
 import React.DOM as D
 import React.DOM.Props as P
 import Thermite as T
 import Unsafe.Coerce (unsafeCoerce)
+
+
+import Debug.Trace
 
 --------------------------------------------------------------------------------
 -- SimpleStorage Class
@@ -104,7 +108,11 @@ countFormSpec = T.simpleSpec performAction render
       case args of
         Left err -> void <<< T.modifyState $ _{errorMessage = err}
         Right (Tuple sender count) -> void do
-          txHash <- lift $ runWeb3 metamask $
+          txHash <- lift $ runWeb3 metamask $ do
+            let msg = sha3 "hello"
+            traceA (show msg)
+            sgned <- personal_sign sender msg
+            traceA (show sgned)
             SimpleStorage.setCount (Just $ Config.config.simpleStorageAddress) sender count
           lift <<< unsafeCoerceAff <<< liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
           T.modifyState $ _{ errorMessage = "", count = ""}

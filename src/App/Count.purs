@@ -7,11 +7,13 @@ import Contracts.SimpleStorage as SimpleStorage
 import Control.Monad.Aff (Milliseconds(..), delay, launchAff)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Maybe (Maybe(..))
-import Network.Ethereum.Web3 (CallMode(..), ETH, EventAction(..), event, metamask, runWeb3)
+import Network.Ethereum.Web3 (ETH, EventAction(..), event, eventFilter, metamask, runWeb3, ChainCursor(..), forkWeb3, sha3)
 import React as R
 import React.DOM as D
 import React.DOM.Props as P
 import Thermite as T
+import Type.Proxy (Proxy(..))
+
 
 type CountState = {currentCount :: String}
 
@@ -36,13 +38,14 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
     monitorCount :: R.ComponentDidMount CountStateProps CountState (eth :: ETH | eff)
     monitorCount this = void $ do
       props <- R.getProps this
-      launchAff do
+      launchAff $ do
         delay (Milliseconds 1000.0)
-        void $ runWeb3 metamask $
-        event Config.config.simpleStorageAddress $ \(SimpleStorage.CountSet cs) -> do
-          _ <- liftEff <<< R.transformState this $ _{currentCount= show cs._count}
-          liftEff $ props.statusCallback "Transaction succeded, enter new count."
-          pure ContinueEvent
+        void $ forkWeb3 metamask $ do
+          let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) Config.config.simpleStorageAddress
+          event fltr $ \(SimpleStorage.CountSet cs) -> do
+            _ <- liftEff <<< R.transformState this $ _{currentCount = show cs._count}
+            liftEff $ props.statusCallback "Transaction succeded, enter new count."
+            pure ContinueEvent
 
 countWatchClass :: R.ReactClass CountStateProps
 countWatchClass = R.createClass countWatchSpec
