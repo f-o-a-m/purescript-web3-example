@@ -23,7 +23,7 @@ appSpec = T.simpleSpec performAction render
          , R.createFactory countFormClass props
          ]
 
-    performAction (UpdateStatus status) _ st = void <<< T.modifyState $ _{status=status}
+    performAction (UpdateStatus status) _ st = void $ T.modifyState _{status=status}
 
 appClass :: forall props. R.ReactClass props
 appClass = T.createClass appSpec (const $ pure {status: "Please enter a count."})

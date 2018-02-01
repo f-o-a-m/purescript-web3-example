@@ -68,7 +68,7 @@ countFormSpec = T.simpleSpec performAction render
            [D.text state.errorMessage]
          , D.form [P.className "count-form"]
            [ D.div'
-             [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
+             [ TextField.textField (  TextField.onChange := (EventHandlerOpt $ R.handle $ \e ->
                                       dispatch (UpdateAddress (unsafeCoerce e).target.value))
                                  <> TextField.hintText := stringNode "0xdeadbeef"
                                  <> TextField.fullWidth := true
@@ -77,7 +77,7 @@ countFormSpec = T.simpleSpec performAction render
                                  ) []
              ]
            , D.div'
-             [ TextField.textField (  TextField.onChange := (EventHandlerOpt <<< R.handle $ \e ->
+             [ TextField.textField (  TextField.onChange := (EventHandlerOpt $ R.handle $ \e ->
                                       dispatch (UpdateCount (unsafeCoerce e).target.value))
                                  <> TextField.hintText := stringNode "123"
                                  <> TextField.fullWidth := true
@@ -86,7 +86,7 @@ countFormSpec = T.simpleSpec performAction render
                                  ) []
              ]
             , D.div [P.className "submit-button-container"]
-              [ RaisedButton.raisedButton ( RaisedButton.onClick := (EventHandlerOpt <<< R.handle $ \_ -> dispatch Submit)
+              [ RaisedButton.raisedButton ( RaisedButton.onClick := (EventHandlerOpt $ R.handle $ \_ -> dispatch Submit)
                                           <> RaisedButton.backgroundColor := "#2196F3"
                                           <> RaisedButton.fullWidth := true
                                         ) [ D.div
@@ -99,14 +99,13 @@ countFormSpec = T.simpleSpec performAction render
       ]
 
     performAction :: T.PerformAction (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
-
     performAction Submit props st = do
       let args = do
             addr <- note "Please enter a valid ethereum address" $ mkAddress =<< mkHexString st.userAddress
             count <- note "Please enter a valid uint256." $ uIntNFromBigNumber =<<  parseBigNumber decimal st.count
             pure $ Tuple addr count
       case args of
-        Left err -> void <<< T.modifyState $ _{errorMessage = err}
+        Left err -> void $ T.modifyState _{errorMessage = err}
         Right (Tuple sender count) -> void do
           txHash <- lift $ runWeb3 metamask $ do
             let msg = sha3 "hello"
@@ -114,21 +113,21 @@ countFormSpec = T.simpleSpec performAction render
             sgned <- personal_sign sender msg
             traceA (show sgned)
             SimpleStorage.setCount (Just $ Config.config.simpleStorageAddress) sender count
-          lift <<< unsafeCoerceAff <<< liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
-          T.modifyState $ _{ errorMessage = "", count = ""}
+          lift $ unsafeCoerceAff $ liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
+          T.modifyState _{ errorMessage = "", count = ""}
 
-    performAction (UpdateAddress addr) _ _ = void <<< T.modifyState $ _{userAddress = addr}
+    performAction (UpdateAddress addr) _ _ = void $ T.modifyState _{userAddress = addr}
 
-    performAction (UpdateCount n) _ _ = void <<< T.modifyState $ _{count = n}
+    performAction (UpdateCount n) _ _ = void $ T.modifyState _{count = n}
 
 countFormClass :: R.ReactClass CountFormProps
 countFormClass =
     let {spec} = T.createReactSpec countFormSpec (const $ pure initialCountFormState)
     in R.createClass (spec {componentWillMount = completeAddressField})
   where
-    completeAddressField this = void <<< launchAff $ do
+    completeAddressField this = void $ launchAff do
       maddr <- getUserAddress
-      liftEff $ maybe (pure unit) (\a -> void $ R.transformState this $ _{userAddress = show a}) maddr
+      liftEff $ maybe (pure unit) (\a -> void $ R.transformState this _{userAddress = show a}) maddr
 
 --------------------------------------------------------------------------------
 

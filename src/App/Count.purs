@@ -31,7 +31,7 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
       pure $ D.h2 [P.className "count-container"] [ D.text $ "Current Count: " <> st.currentCount ]
 
     getInitialState :: R.ComponentWillMount CountStateProps CountState (eth :: ETH | eff)
-    getInitialState this = void <<< launchAff $ do
+    getInitialState this = void $ launchAff $ do
       c <- runWeb3 metamask $ SimpleStorage.count Config.config.simpleStorageAddress Nothing Latest
       liftEff $ R.transformState this _{currentCount= show c}
 
@@ -43,7 +43,7 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
         void $ forkWeb3 metamask $ do
           let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) Config.config.simpleStorageAddress
           event fltr $ \(SimpleStorage.CountSet cs) -> do
-            _ <- liftEff <<< R.transformState this $ _{currentCount = show cs._count}
+            _ <- liftEff $ R.transformState this _{currentCount = show cs._count}
             liftEff $ props.statusCallback "Transaction succeded, enter new count."
             pure ContinueEvent
 
