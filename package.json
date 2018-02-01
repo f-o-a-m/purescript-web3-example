@@ -9,11 +9,11 @@
   "scripts": {
     "psc-package": "psc-package update",
     "postinstall": "npm run psc-package && npm run generator",
-    "generator": "./node_modules/.bin/pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
-    "build": "./node_modules/.bin/pulp browserify --to dist/app.js",
+    "generator": "pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
+    "build": "pulp browserify --to dist/app.js",
     "build-css": "node-sass styles/ -o dist/",
     "watch-css": "npm run build-css && node-sass styles/ -o dist/ --watch --recursive",
-    "webpack": "./node_modules/.bin/webpack --config ./webpack.config.js --progress --profile --colors",
+    "webpack": "webpack --config ./webpack.config.js --progress --profile --colors",
     "webpack-dev-server": "webpack-dev-server --content-base dist --progress"
   },
   "dependencies": {
