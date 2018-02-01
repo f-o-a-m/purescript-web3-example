@@ -11,21 +11,23 @@ import DOM.HTML.Types (htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode)
-import Data.Maybe (fromJust)
-import Partial.Unsafe (unsafePartial)
+import Data.Foldable (for_)
+import Data.Maybe (Maybe)
 import React as R
 import ReactDOM (render)
 
 
 main :: forall eff. Eff (dom :: DOM | eff) Unit
-main = void (elm' >>= render ui)
+main = do
+  elem <- getElem
+  for_ elem (render ui)
   where
     ui :: R.ReactElement
-    ui = R.createElement muiThemeProviderClass unit
-         [R.createFactory appClass unit]
-    elm' :: Eff (dom :: DOM | eff) Element
-    elm' = do
+    ui =
+      R.createElement muiThemeProviderClass unit
+        [ R.createFactory appClass unit ]
+    getElem :: Eff (dom :: DOM | eff) (Maybe Element)
+    getElem = do
       win <- window
       doc <- document win
-      elm <- getElementById (ElementId "app") (documentToNonElementParentNode (htmlDocumentToDocument doc))
-      pure $ unsafePartial (fromJust elm)
+      getElementById (ElementId "app") (documentToNonElementParentNode (htmlDocumentToDocument doc))
