@@ -6,8 +6,9 @@ import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Monad.Aff (Milliseconds(..), delay, launchAff)
 import Control.Monad.Eff.Class (liftEff)
+import Data.Lens ((.~))
 import Data.Maybe (Maybe(..))
-import Network.Ethereum.Web3 (ETH, EventAction(..), event, eventFilter, metamask, runWeb3, ChainCursor(..), forkWeb3, sha3)
+import Network.Ethereum.Web3 (ChainCursor(..), ETH, EventAction(..), _to, defaultTransactionOptions, event, eventFilter, forkWeb3, metamask, runWeb3)
 import React as R
 import React.DOM as D
 import React.DOM.Props as P
@@ -32,7 +33,9 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
 
     getInitialState :: R.ComponentWillMount CountStateProps CountState (eth :: ETH | eff)
     getInitialState this = void $ launchAff $ do
-      c <- runWeb3 metamask $ SimpleStorage.count Config.config.simpleStorageAddress Nothing Latest
+      let txOpts = defaultTransactionOptions # _to .~ Just Config.config.simpleStorageAddress
+      c <- runWeb3 metamask $ SimpleStorage.count txOpts Latest
+      
       liftEff $ R.transformState this _{currentCount= show c}
 
     monitorCount :: R.ComponentDidMount CountStateProps CountState (eth :: ETH | eff)

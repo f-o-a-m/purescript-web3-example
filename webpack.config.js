@@ -63,9 +63,9 @@ module.exports = {
         exclude: /node_modules/,
         query: {
           psc: 'psa',
-          src: ['.psc-package/**/**/src/*.purs', 'src/**/*.purs'],
+          src: ['bower_components/*/src/**/*.purs', 'src/**/*.purs'],
           pscIde: true,
-          pscPackage: true
+          pscPackage: false
         }
       },
       {
@@ -87,11 +87,6 @@ module.exports = {
     ]
   },
   resolve: {
-//    alias: {
-//      'react': 'preact-compat',
-//      'react-dom': 'preact-compat',
-//      'create-react-class': 'preact-compat/lib/create-react-class' // beacuse we use createClass
-//    },
     modules: [
       'node_modules',
       'bower_components'

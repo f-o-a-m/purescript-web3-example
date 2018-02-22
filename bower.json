@@ -1,0 +1,13 @@
+{
+  "name": "purescript-web3-example",
+  "private": true,
+  "dependencies": {
+    "purescript-dom": "^4.10.0",
+    "purescript-react": "^4.3.0",
+    "purescript-react-dom": "^4.0.0",
+    "purescript-react-material-ui": "^0.1.0",
+    "purescript-thermite": "https://github.com/blinky3713/purescript-thermite.git#6.0.0",
+    "purescript-web3": "^0.15.0",
+    "purescript-web3-generator": "^0.15.0"
+  }
+}

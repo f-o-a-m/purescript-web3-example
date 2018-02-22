@@ -9,17 +9,17 @@ import Control.Monad.Aff (Aff, launchAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Trans.Class (lift)
-import Data.Array ((!!))
-import Data.Either (Either(..))
+import Data.Array (index)
+import Data.Either (Either(..), hush)
 import Data.Foreign (toForeign)
+import Data.Lens ((.~))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Options ((:=))
 import Data.Tuple (Tuple(..))
-import Network.Ethereum.Web3.Api (personal_sign)
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (ETH, Address, decimal, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber, sha3)
+import Network.Ethereum.Web3 (Address, ETH, _from, _to, decimal, defaultTransactionOptions, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
 import React.DOM as D
@@ -28,7 +28,6 @@ import Thermite as T
 import Unsafe.Coerce (unsafeCoerce)
 
 
-import Debug.Trace
 
 --------------------------------------------------------------------------------
 -- SimpleStorage Class
@@ -69,7 +68,7 @@ countFormSpec = T.simpleSpec performAction render
          , D.form [P.className "count-form"]
            [ D.div'
              [ TextField.textField (  TextField.onChange := (EventHandlerOpt $ R.handle $ \e ->
-                                      dispatch (UpdateAddress (unsafeCoerce e).target.value))
+                                                                          dispatch (UpdateAddress (unsafeCoerce e).target.value))
                                  <> TextField.hintText := stringNode "0xdeadbeef"
                                  <> TextField.fullWidth := true
                                  <> TextField.floatingLabelText := stringNode "User Address"
@@ -108,11 +107,9 @@ countFormSpec = T.simpleSpec performAction render
         Left err -> void $ T.modifyState _{errorMessage = err}
         Right (Tuple sender count) -> void do
           txHash <- lift $ runWeb3 metamask $ do
-            let msg = sha3 "hello"
-            traceA (show msg)
-            sgned <- personal_sign sender msg
-            traceA (show sgned)
-            SimpleStorage.setCount (Just $ Config.config.simpleStorageAddress) sender count
+            let txOpts = defaultTransactionOptions # _from .~ Just sender
+                                                   # _to .~ Just Config.config.simpleStorageAddress
+            SimpleStorage.setCount txOpts { _count : count }
           lift $ unsafeCoerceAff $ liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
           T.modifyState _{ errorMessage = "", count = ""}
 
@@ -133,5 +130,5 @@ countFormClass =
 
 getUserAddress :: forall eff . Aff (eth :: ETH | eff) (Maybe Address)
 getUserAddress = do
-  accounts <- runWeb3 metamask $ eth_getAccounts
-  pure $ accounts !! 0
+  accounts <- map hush $ runWeb3 metamask $ eth_getAccounts
+  pure $ accounts >>= flip index 0
