@@ -2,6 +2,7 @@ module App.Count where
 
 import Prelude
 
+import App.Uport (uport)
 import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Monad.Aff (Milliseconds(..), delay, launchAff)
@@ -34,7 +35,7 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
     getInitialState :: R.ComponentWillMount CountStateProps CountState (eth :: ETH | eff)
     getInitialState this = void $ launchAff $ do
       let txOpts = defaultTransactionOptions # _to .~ Just Config.config.simpleStorageAddress
-      c <- runWeb3 metamask $ SimpleStorage.count txOpts Latest
+      c <- runWeb3 uport $ SimpleStorage.count txOpts Latest
       
       liftEff $ R.transformState this _{currentCount= show c}
 
@@ -43,7 +44,7 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
       props <- R.getProps this
       launchAff $ do
         delay (Milliseconds 1000.0)
-        void $ forkWeb3 metamask $ do
+        void $ forkWeb3 uport $ do
           let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) Config.config.simpleStorageAddress
           event fltr $ \(SimpleStorage.CountSet cs) -> do
             _ <- liftEff $ R.transformState this _{currentCount = show cs._count}

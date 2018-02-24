@@ -2,6 +2,7 @@ module App.CountForm where
 
 import Prelude
 
+import App.Uport (uport)
 import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Error.Util (note)
@@ -106,7 +107,7 @@ countFormSpec = T.simpleSpec performAction render
       case args of
         Left err -> void $ T.modifyState _{errorMessage = err}
         Right (Tuple sender count) -> void do
-          txHash <- lift $ runWeb3 metamask $ do
+          txHash <- lift $ runWeb3 uport $ do
             let txOpts = defaultTransactionOptions # _from .~ Just sender
                                                    # _to .~ Just Config.config.simpleStorageAddress
             SimpleStorage.setCount txOpts { _count : count }
@@ -130,5 +131,5 @@ countFormClass =
 
 getUserAddress :: forall eff . Aff (eth :: ETH | eff) (Maybe Address)
 getUserAddress = do
-  accounts <- map hush $ runWeb3 metamask $ eth_getAccounts
+  accounts <- map hush $ runWeb3 uport $ eth_getAccounts
   pure $ accounts >>= flip index 0
