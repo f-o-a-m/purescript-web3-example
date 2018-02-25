@@ -8,7 +8,7 @@
     "purescript-react-material-ui": "^0.1.0",
     "purescript-thermite": "blinky3713/purescript-thermite#6.0.0",
     "purescript-uport": "f-o-a-m/purescript-uport#init",
-    "purescript-web3": "^0.15.0",
-    "purescript-web3-generator": "^0.15.0"
+    "purescript-web3": "f-o-a-m/purescript-web3#reader",
+    "purescript-web3-generator": "f-o-a-m/purescript-web3-generator#reader"
   }
 }

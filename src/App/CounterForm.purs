@@ -2,11 +2,11 @@ module App.CountForm where
 
 import Prelude
 
-import App.Uport (uport)
+import App.Uport (uportProvider')
 import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Error.Util (note)
-import Control.Monad.Aff (Aff, launchAff)
+import Control.Monad.Aff (Aff, launchAff, liftEff')
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Trans.Class (lift)
@@ -20,7 +20,7 @@ import Data.Tuple (Tuple(..))
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (Address, ETH, _from, _to, decimal, defaultTransactionOptions, metamask, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Web3 (Address, ETH, _from, _to, decimal, defaultTransactionOptions, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import React as R
 import React.DOM as D
@@ -107,7 +107,8 @@ countFormSpec = T.simpleSpec performAction render
       case args of
         Left err -> void $ T.modifyState _{errorMessage = err}
         Right (Tuple sender count) -> void do
-          txHash <- lift $ runWeb3 uport $ do
+          p <- lift $ liftEff' uportProvider'
+          txHash <- lift $ runWeb3 p $ do
             let txOpts = defaultTransactionOptions # _from .~ Just sender
                                                    # _to .~ Just Config.config.simpleStorageAddress
             SimpleStorage.setCount txOpts { _count : count }
@@ -131,5 +132,6 @@ countFormClass =
 
 getUserAddress :: forall eff . Aff (eth :: ETH | eff) (Maybe Address)
 getUserAddress = do
-  accounts <- map hush $ runWeb3 uport $ eth_getAccounts
+  p <- liftEff' uportProvider'
+  accounts <- map hush $ runWeb3 p $ eth_getAccounts
   pure $ accounts >>= flip index 0
