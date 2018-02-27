@@ -7,25 +7,27 @@
     "test": "test"
   },
   "scripts": {
-    "bower": "bower install",
+    "bower": "bower install --production",
     "postinstall": "npm run bower && npm run generator",
     "generator": "pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
-    "build": "webpack --config ./webpack.config.js --progress --profile --colors",
-    "webpack-dev-server": "webpack-dev-server --content-base dist --progress"
+    "webpack-dev-server": "webpack-dev-server --content-base dist --progress",
+    "build": "pulp browserify --to dist/app.js",
+    "webpack": "webpack --config ./webpack.config.js --progress --profile --colors"
   },
   "dependencies": {
     "bignumber.js": "git+https://github.com/frozeman/bignumber.js-nolookahead.git",
     "create-react-class": "^15.6.0",
     "crypto-js": "^3.1.8",
+    "ethjs-provider-http": "^0.1.6",
     "http-serve": "^1.0.1",
     "material-ui": "^0.18.7",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
-    "ethjs-provider-http": "^0.1.6",
     "uport-connect": "^0.7.0",
     "yargs": "^8.0.2"
   },
   "devDependencies": {
+    "bower": "^1.8.2",
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-stage-0": "^6.24.1",

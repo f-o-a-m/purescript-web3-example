@@ -30,14 +30,14 @@ countWatchSpec = (R.spec {currentCount: ""} render) { componentWillMount = getIn
     render :: R.Render CountStateProps CountState (eth :: ETH | eff)
     render this = do
       st <- R.readState this
-      pure $ D.h2 [P.className "count-container"] [ D.text $ "Current Count: " <> st.currentCount ]
-
+      pure $ D.div' [ D.h2 [P.className "count-container"] [ D.text $ "Contract address: " <> show Config.config.simpleStorageAddress]
+                    , D.h2 [P.className "count-container"] [ D.text $ "Current Count: " <> st.currentCount ]
+                    ]
     getInitialState :: R.ComponentWillMount CountStateProps CountState (eth :: ETH | eff)
     getInitialState this = void $ launchAff $ do
       let txOpts = defaultTransactionOptions # _to .~ Just Config.config.simpleStorageAddress
       p <- liftEff' uportProvider'
       c <- runWeb3 p $ SimpleStorage.count txOpts Latest
-      
       liftEff $ R.transformState this _{currentCount= show c}
 
     monitorCount :: R.ComponentDidMount CountStateProps CountState (eth :: ETH | eff)

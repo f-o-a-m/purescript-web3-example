@@ -2,11 +2,19 @@ language: node_js
 dist: trusty
 sudo: required
 node_js: stable
+env:
+  - SIMPLE_STORAGE_ADDRESS: "0x7ec89063be181f1ad3bcea675bb6413da0f3f50b"
 install:
-  - npm install -g bower
   - npm install
 script:
-  - bower install --production
   - npm run -s build
-  - bower install
+  - npm run bower
   - npm -s test
+  - npm run webpack
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN # Set in travis-ci.org dashboard
+  local_dir: dist
+  on:
+    branch: travis
