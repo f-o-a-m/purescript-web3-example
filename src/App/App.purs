@@ -1,8 +1,7 @@
 module App.App where
 
 import Prelude
-import App.Count (countWatchClass)
-import App.CountForm (countFormClass)
+import App.CountForm (countWatchClass, countFormClass)
 import Network.Ethereum.Web3 (ETH)
 import React as R
 import React.DOM as D
