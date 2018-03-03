@@ -9,16 +9,20 @@ import Control.Monad.Aff (Aff, Error, Milliseconds(..), delay, forkAff, joinFibe
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Trans.Class (lift)
 import Data.Array (index)
-import Data.Either (Either(..), hush)
+import Data.Either (Either(..), hush, isLeft)
+import Data.Foldable (for_)
 import Data.Foreign (toForeign)
 import Data.Lens ((.~))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
+import Data.Monoid (mempty)
 import Data.Options ((:=))
+import Data.Options as Options
 import Data.Tuple (Tuple(..))
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
 import MaterialUI.RaisedButton as RaisedButton
+import MaterialUI.TextField (TextFieldOption)
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (type (:&), Address, ChainCursor(..), D2, D5, D6, ETH, EventAction(..), Provider, UIntN, Web3Error, _from, _to, decimal, defaultTransactionOptions, event, eventFilter, forkWeb3, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Web3 (type (:&), Address, CallError, ChainCursor(..), D2, D5, D6, ETH, EventAction(..), Provider, UIntN, Web3Error, _from, _to, decimal, defaultTransactionOptions, event, eventFilter, forkWeb3, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import Partial.Unsafe (unsafeCrashWith)
 import React as R
@@ -32,19 +36,27 @@ import Unsafe.Coerce (unsafeCoerce)
 -- SimpleStorage Class
 --------------------------------------------------------------------------------
 
+type Count = (UIntN (D2 :& D5 :& D6))
 type CountFormState =
-  { userAddress :: String
-  , count :: String
-  , errorMessage :: String
-  , currentCount :: Maybe (UIntN (D2 :& D5 :& D6))
+  { userAddress :: InputVal Address
+  , count :: InputVal Count
+  , currentCount :: Maybe (Either CountFetchError Count)
   , status :: String
   }
 
+data CountFetchError
+  = FailedToFetchCountWithWeb3Error Web3Error
+  | FailedToFetchCountWithCallError CallError
+
+type InputVal a = { val :: Either String a, input :: String }
+
+emptyInputVal :: forall a. InputVal a
+emptyInputVal = {val: Left "", input: ""}
+
 initialCountFormState :: CountFormState
 initialCountFormState =
-    { userAddress: ""
-    , count: ""
-    , errorMessage: ""
+    { userAddress: emptyInputVal
+    , count: emptyInputVal
     , currentCount: Nothing
     , status: "Please enter a count."
     }
@@ -60,6 +72,23 @@ type CountFormProps =
   }
 
 
+strVal :: String -> UnknownType
+strVal = toForeign >>> UnknownType
+
+inputValToValueOpt :: forall a. InputVal a -> Options.Options TextFieldOption
+inputValToValueOpt iv = TextField.value := strVal iv.input
+
+inputValToErrorOpt :: forall a. InputVal a -> Options.Options TextFieldOption
+inputValToErrorOpt iv = case iv.val of
+  Left err -> TextField.errorText := stringNode err
+  Right _ -> mempty
+
+inputValToOpts :: forall a. InputVal a -> Options.Options TextFieldOption
+inputValToOpts = inputValToValueOpt <> inputValToErrorOpt
+  
+listenToInput :: forall action. (action -> T.EventHandler) -> (String -> action) -> Options.Options TextFieldOption
+listenToInput dispatch ctr =
+  TextField.onChange := (EventHandlerOpt $ R.handle $ \e -> dispatch $ ctr (unsafeCoerce e).target.value)
 
 countFormSpec :: forall eff . T.Spec (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
 countFormSpec = T.simpleSpec performAction render
@@ -68,35 +97,38 @@ countFormSpec = T.simpleSpec performAction render
     render dispatch props state _ =
       [ D.div [P.className "status-bar"] [D.text state.status]
       , D.div' 
-          [ D.h2 [P.className "count-container"] [ D.text $ "Contract address: " <> show props.contractAddress]
-          , D.h2 [P.className "count-container"] [ D.text $ "Current Count: " <> maybe "loading" show state.currentCount ]
+          [ D.h2 [P.className "count-container"]
+              [ D.text $ "Contract address: " <> show props.contractAddress]
+          , D.h2 [P.className "count-container"]
+              [ D.text $ "Current Count: " <> case state.currentCount of 
+                  Nothing -> "loading ..."
+                  Just (Left err) -> "error occurred while fetching count, retrying ..."
+                  Just (Right c) -> show c
+              ]
           ]
       , D.div [P.className ""]
-         [ D.h3 [P.className "error-message-container"]
-           [D.text state.errorMessage]
-         , D.form [P.className "count-form"]
+         [ D.form [P.className "count-form"]
            [ D.div'
-             [ TextField.textField (  TextField.onChange := (EventHandlerOpt $ R.handle $ \e ->
-                                                                          dispatch (UpdateAddress (unsafeCoerce e).target.value))
+             [ TextField.textField (listenToInput dispatch UpdateAddress
                                  <> TextField.hintText := stringNode "0xdeadbeef"
                                  <> TextField.fullWidth := true
-                                 <> TextField.floatingLabelText := stringNode "User Address"
-                                 <> TextField.value := UnknownType (toForeign state.userAddress)
+                                 <> TextField.floatingLabelText := stringNode "User Address *"
+                                 <> inputValToOpts state.userAddress
                                  ) []
              ]
            , D.div'
-             [ TextField.textField (  TextField.onChange := (EventHandlerOpt $ R.handle $ \e ->
-                                      dispatch (UpdateCount (unsafeCoerce e).target.value))
+             [ TextField.textField (listenToInput dispatch UpdateCount
                                  <> TextField.hintText := stringNode "123"
                                  <> TextField.fullWidth := true
-                                 <> TextField.floatingLabelText := stringNode "New Count"
-                                 <> TextField.value := UnknownType (toForeign state.count)
+                                 <> TextField.floatingLabelText := stringNode "New Count *"
+                                 <> inputValToOpts state.count
                                  ) []
              ]
             , D.div [P.className "submit-button-container"]
               [ RaisedButton.raisedButton ( RaisedButton.onClick := (EventHandlerOpt $ R.handle $ \_ -> dispatch Submit)
                                           <> RaisedButton.backgroundColor := "#2196F3"
                                           <> RaisedButton.fullWidth := true
+                                          <> RaisedButton.disabled := (isLeft $ Tuple <$> state.userAddress.val <*> state.count.val)
                                         ) [ D.div
                                             [ P.className "submit-button-text" ]
                                             [ D.text "Submit" ]
@@ -108,23 +140,32 @@ countFormSpec = T.simpleSpec performAction render
 
     performAction :: T.PerformAction (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
     performAction Submit props st = do
-      let args = do
-            addr <- note "Please enter a valid ethereum address" $ mkAddress =<< mkHexString st.userAddress
-            count <- note "Please enter a valid uint256." $ uIntNFromBigNumber =<<  parseBigNumber decimal st.count
-            pure $ Tuple addr count
-      case args of
-        Left err -> void $ T.modifyState _{errorMessage = err}
-        Right (Tuple sender count) -> void do
-          p <- lift $ liftEff' uportProvider'
-          txHash <- lift $ runWeb3 p $ do
-            let txOpts = defaultTransactionOptions # _from .~ Just sender
-                                                   # _to .~ Just props.contractAddress
-            SimpleStorage.setCount txOpts { _count : count }
-          T.modifyState _{ errorMessage = "", count = "", status = "Transaction Hash: " <> show txHash}
+      -- let args = do
+      --       addr <- 
+      --       count <- 
+      --       pure $ Tuple addr count
+      for_ (Tuple <$> st.userAddress.val <*> st.count.val) \(Tuple sender count) -> do
+        p <- lift $ liftEff' uportProvider'
+        txHash <- lift $ runWeb3 p $ do
+          let txOpts = defaultTransactionOptions # _from .~ Just sender
+                                                  # _to .~ Just props.contractAddress
+          SimpleStorage.setCount txOpts { _count : count }
+        pure unit
+        T.modifyState _{ count = emptyInputVal :: InputVal Count, status = "Transaction Hash: " <> show txHash}
 
-    performAction (UpdateAddress addr) _ _ = void $ T.modifyState _{userAddress = addr}
+    performAction (UpdateAddress input) _ _ = do
+      let
+        val = case input of
+          "" -> Left "Input is required"
+          i -> note "Please enter a valid ethereum address" $ mkAddress =<< mkHexString i
+      void $ T.modifyState _{userAddress = {val, input}}
 
-    performAction (UpdateCount n) _ _ = void $ T.modifyState _{count = n}
+    performAction (UpdateCount input) _ _ = do
+      let
+        val = case input of
+          "" -> Left "Input is required"
+          i -> note "Please enter a valid uint256." $ uIntNFromBigNumber =<< parseBigNumber decimal i
+      void $ T.modifyState _{count = {val, input}}
 
 countFormClass :: R.ReactClass CountFormProps
 countFormClass =
@@ -171,12 +212,12 @@ readCountAndUpdate this p = do
   let txOpts = defaultTransactionOptions # _to .~ Just props.contractAddress
   c <- runWeb3 p $ SimpleStorage.count txOpts Latest
   case c of
-    Left err -> -- Web3Error
-      liftEff $ R.transformState this _{errorMessage = show err}
-    Right (Left err) -> -- CallError
-      liftEff $ R.transformState this _{errorMessage = show err}
+    Left err ->
+      liftEff $ R.transformState this _{currentCount = Just $ Left $ FailedToFetchCountWithWeb3Error err}
+    Right (Left err) ->
+      liftEff $ R.transformState this _{currentCount = Just $ Left $ FailedToFetchCountWithCallError err}
     Right (Right count) ->
-      liftEff $ R.transformState this _{currentCount = Just count}
+      liftEff $ R.transformState this _{currentCount = Just $ Right count}
 
 countPullLoop
   :: forall eff void
@@ -198,7 +239,7 @@ countEventFilter this p = do
   fiber <- forkWeb3 p $ do
     let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) props.contractAddress
     event fltr $ \(SimpleStorage.CountSet cs) -> do
-      _ <- liftEff $ R.transformState this _{currentCount = Just cs._count, status = "Transaction succeded, enter new count."}
+      _ <- liftEff $ R.transformState this _{currentCount = Just $ Right cs._count, status = "Transaction succeded, enter new count."}
       -- TODO: ideally we should termiante when component is unmounted
       pure ContinueEvent
   res <- try (joinFiber fiber)
