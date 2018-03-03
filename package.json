@@ -2,8 +2,6 @@
   "name": "purescript-web3-example",
   "private": true,
   "scripts": {
-    "bower": "bower install --production",
-    "postinstall": "npm run bower && npm run generator",
     "generator": "pulp build --src-path generator -m Generator --to generator.js && node generator.js --abis contracts/abis --dest src; rm generator.js",
     "webpack-dev-server": "webpack-dev-server --content-base dist --progress",
     "build": "pulp browserify --to dist/app.js",

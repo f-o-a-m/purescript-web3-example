@@ -7,8 +7,10 @@ env:
 install:
   - npm install
 script:
+  - bower install --production
+  - npm run -s generator
   - npm run -s build
-  - npm run bower
+  - bower install
   - npm -s test
   - npm run webpack
 deploy:
