@@ -3,11 +3,9 @@ module App.CountForm where
 import Prelude
 
 import App.Uport (uportProvider')
-import Config as Config
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Error.Util (note)
 import Control.Monad.Aff (Aff, launchAff, liftEff', Milliseconds(..), delay)
-import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Trans.Class (lift)
 import Data.Array (index)
@@ -38,6 +36,7 @@ type CountFormState =
   , count :: String
   , errorMessage :: String
   , currentCount :: String
+  , status :: String
   }
 
 initialCountFormState :: CountFormState
@@ -46,6 +45,7 @@ initialCountFormState =
     , count: ""
     , errorMessage: ""
     , currentCount: ""
+    , status: "Please enter a count."
     }
 
 data CountFormAction =
@@ -55,7 +55,8 @@ data CountFormAction =
 
 
 type CountFormProps =
-  { statusCallback :: String -> T.EventHandler }
+  { contractAddress :: Address
+  }
 
 
 
@@ -64,8 +65,9 @@ countFormSpec = T.simpleSpec performAction render
   where
     render :: T.Render CountFormState CountFormProps CountFormAction
     render dispatch props state _ =
-      [ D.div' 
-          [ D.h2 [P.className "count-container"] [ D.text $ "Contract address: " <> show Config.config.simpleStorageAddress]
+      [ D.div [P.className "status-bar"] [D.text state.status]
+      , D.div' 
+          [ D.h2 [P.className "count-container"] [ D.text $ "Contract address: " <> show props.contractAddress]
           , D.h2 [P.className "count-container"] [ D.text $ "Current Count: " <> state.currentCount ]
           ]
       , D.div [P.className ""]
@@ -115,10 +117,9 @@ countFormSpec = T.simpleSpec performAction render
           p <- lift $ liftEff' uportProvider'
           txHash <- lift $ runWeb3 p $ do
             let txOpts = defaultTransactionOptions # _from .~ Just sender
-                                                   # _to .~ Just Config.config.simpleStorageAddress
+                                                   # _to .~ Just props.contractAddress
             SimpleStorage.setCount txOpts { _count : count }
-          lift $ unsafeCoerceAff $ liftEff $ props.statusCallback $ "Transaction Hash: " <> show txHash
-          T.modifyState _{ errorMessage = "", count = ""}
+          T.modifyState _{ errorMessage = "", count = "", status = "Transaction Hash: " <> show txHash}
 
     performAction (UpdateAddress addr) _ _ = void $ T.modifyState _{userAddress = addr}
 
@@ -142,23 +143,22 @@ countFormClass =
   
   getInitialState :: forall eff. R.ComponentWillMount CountFormProps CountFormState (eth :: ETH | eff)
   getInitialState this = void $ launchAff $ do
-    let txOpts = defaultTransactionOptions # _to .~ Just Config.config.simpleStorageAddress
+    props <- liftEff $ R.getProps this
+    let txOpts = defaultTransactionOptions # _to .~ Just props.contractAddress
     p <- liftEff' uportProvider'
     c <- runWeb3 p $ SimpleStorage.count txOpts Latest
     liftEff $ R.transformState this _{currentCount= show c}
   
   monitorCount :: forall eff. R.ComponentWillMount CountFormProps CountFormState (eth :: ETH | eff)
-  monitorCount this = void $ do
-    props <- R.getProps this
-    launchAff $ do
-      delay (Milliseconds 1000.0)
-      p <- liftEff' uportProvider'
-      void $ forkWeb3 p $ do
-        let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) Config.config.simpleStorageAddress
-        event fltr $ \(SimpleStorage.CountSet cs) -> do
-          _ <- liftEff $ R.transformState this _{currentCount = show cs._count}
-          liftEff $ props.statusCallback "Transaction succeded, enter new count."
-          pure ContinueEvent
+  monitorCount this = void $ launchAff $ do
+    props <- liftEff $ R.getProps this
+    delay (Milliseconds 1000.0)
+    p <- liftEff' uportProvider'
+    void $ forkWeb3 p $ do
+      let fltr = eventFilter (Proxy :: Proxy SimpleStorage.CountSet) props.contractAddress
+      event fltr $ \(SimpleStorage.CountSet cs) -> do
+        _ <- liftEff $ R.transformState this _{currentCount = show cs._count, status = "Transaction succeded, enter new count."}
+        pure ContinueEvent
 
 --------------------------------------------------------------------------------
 
