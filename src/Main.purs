@@ -26,9 +26,7 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 main :: forall eff. Eff (dom :: DOM, exception :: EXCEPTION, uport :: UPORT | eff) Unit
 main = do
   elem <- getElem
-  provider <- mkUport
-  -- provider <- mkMetamask
-  let props = { contractAddress, provider }
+  let props = { contractAddress }
   for_ elem $ render $ ui props
   where
     ui :: CountFormProps -> R.ReactElement
@@ -41,20 +39,6 @@ getElem = do
   win <- window
   doc <- document win
   getElementById (ElementId "app") (documentToNonElementParentNode (htmlDocumentToDocument doc))
-
-mkUport :: forall eff. Eff (exception :: EXCEPTION, uport :: UPORT | eff) ExtendedProvider
-mkUport = do
-  let
-    uportConnect = connect
-      $ withAppName (AppName "Web3 example")
-      >>> withNetwork rinkeby
-  provider <- uportConnect >>= getProvider
-  pure { provider, mustSetSender: false }
-
-mkMetamask :: forall eff. Eff (exception :: EXCEPTION | eff) ExtendedProvider
-mkMetamask = do
-  provider <- metamaskProvider
-  pure {provider, mustSetSender: true}
 
 contractAddress :: Address
 contractAddress =

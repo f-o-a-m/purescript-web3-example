@@ -4,23 +4,29 @@ import Prelude
 
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Error.Util (note)
-import Control.Monad.Aff (Aff, Error, Milliseconds(..), delay, forkAff, joinFiber, launchAff, try)
+import Control.Monad.Aff (Aff, Error, Milliseconds(..), attempt, delay, forkAff, joinFiber, launchAff, liftEff', try)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Trans.Class (lift)
 import Data.Array (index)
 import Data.Either (Either(..), hush)
 import Data.Foldable (for_)
 import Data.Foreign (toForeign)
+import Data.Function.Uncurried (mkFn3)
 import Data.Lens ((.~))
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 import Data.Options ((:=))
 import Data.Options as Options
 import MaterialUI (EventHandlerOpt(..), UnknownType(..), stringNode)
+import MaterialUI.MenuItem as MenuItem
 import MaterialUI.RaisedButton as RaisedButton
+import MaterialUI.SelectField as SelectField
 import MaterialUI.TextField (TextFieldOption)
 import MaterialUI.TextField as TextField
-import Network.Ethereum.Web3 (type (:&), Address, CallError, ChainCursor(..), D2, D5, D6, ETH, EventAction(..), Provider, UIntN, Web3Error, _from, _to, decimal, defaultTransactionOptions, event, eventFilter, forkWeb3, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
+import Network.Ethereum.Uport (AppName(..), UPORT, connect, rinkeby, withAppName, withNetwork, getProvider)
+import Network.Ethereum.Web3 (type (:&), Address, CallError, ChainCursor(..), D2, D5, D6, ETH, EventAction(..), Provider, UIntN, Web3Error, _from, _to, decimal, defaultTransactionOptions, event, eventFilter, forkWeb3, metamaskProvider, mkAddress, mkHexString, parseBigNumber, runWeb3, uIntNFromBigNumber)
 import Network.Ethereum.Web3.Api (eth_getAccounts)
 import Network.Ethereum.Web3.Types.Types (HexString)
 import Partial.Unsafe (unsafeCrashWith)
@@ -31,6 +37,7 @@ import Thermite as T
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
+
 --------------------------------------------------------------------------------
 -- SimpleStorage Class
 --------------------------------------------------------------------------------
@@ -39,6 +46,8 @@ type Count = (UIntN (D2 :& D5 :& D6))
 type CountFormState =
   { userAddress :: InputVal Address
   , count :: InputVal Count
+  , providerError :: String
+  , provider :: ExtendedProvider
   , currentCount :: Maybe (Either CountFetchError Count)
   , status :: Maybe SubmitStatus
   }
@@ -57,10 +66,12 @@ type InputVal a = { val :: Either String a, input :: String }
 emptyInputVal :: forall a. InputVal a
 emptyInputVal = {val: Left "", input: ""}
 
-initialCountFormState :: CountFormState
-initialCountFormState =
+initialCountFormState :: ExtendedProvider -> CountFormState
+initialCountFormState p =
   { userAddress: emptyInputVal
   , count: emptyInputVal
+  , providerError: ""
+  , provider: p
   , currentCount: Nothing
   , status: Nothing
   }
@@ -68,17 +79,37 @@ initialCountFormState =
 data CountFormAction
   = UpdateAddress String
   | UpdateCount String
+  | UpdateProvider String
   | Submit
 
 type ExtendedProvider =
   { provider :: Provider
-  , mustSetSender :: Boolean
+  , pType :: ProviderType
   }
 
 type CountFormProps =
   { contractAddress :: Address
-  , provider :: ExtendedProvider
   }
+
+data ProviderType
+  = ProviderUport
+  | ProviderMetamask
+
+providerName :: ProviderType -> String
+providerName = case _ of
+  ProviderUport -> "Uport"
+  ProviderMetamask -> "Metamask"
+
+providerMustSetSender :: ProviderType -> Boolean
+providerMustSetSender = case _ of
+  ProviderUport -> false
+  ProviderMetamask -> true
+
+providerFromName :: String -> Maybe ProviderType
+providerFromName = case _ of
+  "Uport" -> Just ProviderUport
+  "Metamask" -> Just ProviderMetamask
+  _ -> Nothing
 
 strVal :: String -> UnknownType
 strVal = toForeign >>> UnknownType
@@ -98,15 +129,16 @@ listenToInput :: forall action. (action -> T.EventHandler) -> (String -> action)
 listenToInput dispatch ctr =
   TextField.onChange := (EventHandlerOpt $ R.handle $ \e -> dispatch $ ctr (unsafeCoerce e).target.value)
 
-submitDisabled :: CountFormState -> CountFormProps -> Boolean
-submitDisabled st props = case st.count.val of
+submitDisabled :: CountFormState -> Boolean
+submitDisabled st =
+  case st.count.val of
   Left _ -> true
-  Right _ | not props.provider.mustSetSender -> false
+  Right _ | not (providerMustSetSender $ st.provider.pType) -> false
   Right _ | otherwise -> case st.userAddress.val of
     Right _ -> false
     Left _ -> true
 
-countFormSpec :: forall eff . T.Spec (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
+countFormSpec :: forall eff . T.Spec (eth :: ETH, uport :: UPORT | eff) CountFormState CountFormProps CountFormAction
 countFormSpec = T.simpleSpec performAction render
   where
     render :: T.Render CountFormState CountFormProps CountFormAction
@@ -124,7 +156,24 @@ countFormSpec = T.simpleSpec performAction render
       , D.form
           [ P.className "count-form"]
           [ D.div'
-              [ if props.provider.mustSetSender then
+              [ SelectField.selectField
+                  ( SelectField.floatingLabelText := stringNode "Provider"
+                    <> SelectField.value := UnknownType (toForeign $ providerName state.provider.pType)
+                    <> SelectField.errorText := stringNode state.providerError
+                    <> SelectField.onChange := (EventHandlerOpt $ unsafeCoerce $ mkFn3 \_ _ -> unsafeCoerce $ R.handle $ \e -> dispatch $ UpdateProvider e)
+                  )
+                  [ MenuItem.menuItem
+                      (MenuItem.value := UnknownType (toForeign $ providerName ProviderUport)
+                        <> MenuItem.primaryText := stringNode (providerName ProviderUport)
+                      ) []
+                  , MenuItem.menuItem
+                      (MenuItem.value := UnknownType (toForeign $ providerName ProviderMetamask)
+                        <> MenuItem.primaryText := stringNode (providerName ProviderMetamask)
+                      ) []
+                  ]
+              ]
+          , D.div'
+              [ if providerMustSetSender state.provider.pType then
                   TextField.textField
                     (listenToInput dispatch UpdateAddress
                       <> TextField.hintText := stringNode "0xdeadbeef"
@@ -150,7 +199,7 @@ countFormSpec = T.simpleSpec performAction render
                   ( RaisedButton.onClick := (EventHandlerOpt $ R.handle $ \_ -> dispatch Submit)
                     <> RaisedButton.backgroundColor := "#2196F3"
                     <> RaisedButton.fullWidth := true
-                    <> RaisedButton.disabled := submitDisabled state props
+                    <> RaisedButton.disabled := submitDisabled state
                   ) [ D.div
                       [ P.className "submit-button-text" ]
                       [ D.text "Submit" ]
@@ -166,19 +215,19 @@ countFormSpec = T.simpleSpec performAction render
         ]
       ]
 
-    performAction :: T.PerformAction (eth :: ETH | eff) CountFormState CountFormProps CountFormAction
+    performAction :: T.PerformAction (eth :: ETH, uport :: UPORT | eff) CountFormState CountFormProps CountFormAction
     performAction Submit props st = do
       for_ st.count.val \count -> do
         let
           txOpts = defaultTransactionOptions
             # _to .~ Just props.contractAddress
             # case st.userAddress.val of
-              Right sender | props.provider.mustSetSender -> _from .~ Just sender
+              Right sender | providerMustSetSender st.provider.pType -> _from .~ Just sender
               _ ->
                 -- NOTE: submit is disabled if sender is needed,
                 -- so it's safe to ignore other cases in this case match.
                 id
-        mbTxHash <- lift $ runWeb3 props.provider.provider $ do
+        mbTxHash <- lift $ runWeb3 st.provider.provider $ do
           SimpleStorage.setCount txOpts { _count : count }
         T.modifyState _
           { count = emptyInputVal :: InputVal Count
@@ -186,6 +235,18 @@ countFormSpec = T.simpleSpec performAction render
               Left err -> FailedToCreateTransaction err 
               Right txHash -> TransactionWasCreated txHash
           }
+
+    performAction (UpdateProvider name) _ st = for_ (providerFromName name) \pt ->
+      lift (loadProvider pt) >>= case _ of
+        Nothing ->
+          void $ T.modifyState _{providerError = "Failed to create provider, try different one"}
+        Just provider -> do
+          void $ T.modifyState _{provider = provider}
+          when (providerMustSetSender provider.pType) do
+            mbAddr <- lift $ readAddress provider.provider
+            for_ mbAddr \addr ->
+              void $ T.modifyState _{userAddress = {val: Right addr, input: show addr}}
+            
 
     performAction (UpdateAddress input) _ _ = do
       let
@@ -201,16 +262,25 @@ countFormSpec = T.simpleSpec performAction render
           i -> note "Please enter a valid uint256." $ uIntNFromBigNumber =<< parseBigNumber decimal i
       void $ T.modifyState _{count = {val, input}}
 
+
+loadProvider :: forall eff. ProviderType -> Aff (uport :: UPORT |eff) (Maybe ExtendedProvider)
+loadProvider = case _ of
+  ProviderUport -> attempt (liftEff' mkUport) <#> hush
+  ProviderMetamask -> attempt (liftEff' mkMetamask) <#> hush
+
 countFormClass :: R.ReactClass CountFormProps
 countFormClass =
-    let {spec} = T.createReactSpec countFormSpec (const $ pure initialCountFormState)
+    let {spec} = T.createReactSpec countFormSpec (const $ loadInitial)
     in R.createClass (spec { componentWillMount = componentWillMount })
   where
+  loadInitial = do
+    p <- mkUport
+    pure $ initialCountFormState p
   componentWillMount :: forall eff. R.ComponentWillMount CountFormProps CountFormState (eth :: ETH | eff)
   componentWillMount this = void $ launchAff $ do
-    props <- liftEff $ R.getProps this
-    let p = props.provider.provider
-    when props.provider.mustSetSender
+    state <- liftEff $ R.readState this
+    let p = state.provider.provider
+    when (providerMustSetSender state.provider.pType)
       $ void $ forkAff $ completeAddressField this p
     void $ forkAff $ do
       readCountAndUpdate this p
@@ -227,8 +297,8 @@ completeAddressField
   -> Provider
   -> Aff (PropsAndStateRW ( eth :: ETH | eff)) Unit
 completeAddressField this p = do
-  accounts <- map hush $ runWeb3 p $ eth_getAccounts
-  for_ (accounts >>= flip index 0) \addr -> do
+  mbAddr <- readAddress p
+  for_ mbAddr \addr -> do
     liftEff $ R.transformState this _{userAddress = {val: Right addr, input: show addr}}
 
 monitorCount
@@ -306,3 +376,22 @@ countEventFilter this p = do
     Right (Right _) ->
       -- TODO: ideally we should stop listening when component is unmounted so this shuold be removed
       unsafeCrashWith "imposible, filter should never finishe, as event handler returns `ContinueEvent` all the time"
+
+
+mkUport :: forall eff. Eff (exception :: EXCEPTION, uport :: UPORT | eff) ExtendedProvider
+mkUport = do
+  let
+    uportConnect = connect
+      $ withAppName (AppName "Web3 example")
+      >>> withNetwork rinkeby
+  provider <- uportConnect >>= getProvider
+  pure { provider, pType: ProviderUport }
+
+mkMetamask :: forall eff. Eff (exception :: EXCEPTION | eff) ExtendedProvider
+mkMetamask = do
+  provider <- metamaskProvider
+  pure {provider, pType: ProviderMetamask}
+
+
+readAddress :: forall eff. Provider -> Aff ( eth :: ETH |eff) (Maybe Address)
+readAddress p = map (hush >=> flip index 0) $ runWeb3 p $ eth_getAccounts
