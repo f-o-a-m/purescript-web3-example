@@ -7,7 +7,7 @@
     "purescript-react-dom": "^4.0.0",
     "purescript-react-material-ui": "^0.1.0",
     "purescript-thermite": "blinky3713/purescript-thermite#6.0.0",
-    "purescript-uport": "f-o-a-m/purescript-uport#init",
+    "purescript-uport": "^0.1.0",
     "purescript-web3": "^0.16.0",
     "purescript-web3-generator": "^0.16.0"
   }
