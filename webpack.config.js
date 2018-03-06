@@ -1,4 +1,3 @@
-const appConfig = require('./src/App/Config.js').config;
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -45,7 +44,7 @@ module.exports = {
   output: {
     filename: 'app.js',
     path: __dirname + '/dist',
-    publicPath: '/'
+    publicPath: ''
   },
   devtool: "source-map",
   module: {
@@ -63,9 +62,9 @@ module.exports = {
         exclude: /node_modules/,
         query: {
           psc: 'psa',
-          src: ['.psc-package/**/**/src/*.purs', 'src/**/*.purs'],
+          src: ['bower_components/*/src/**/*.purs', 'src/**/*.purs'],
           pscIde: true,
-          pscPackage: true
+          pscPackage: false
         }
       },
       {
@@ -87,11 +86,6 @@ module.exports = {
     ]
   },
   resolve: {
-//    alias: {
-//      'react': 'preact-compat',
-//      'react-dom': 'preact-compat',
-//      'create-react-class': 'preact-compat/lib/create-react-class' // beacuse we use createClass
-//    },
     modules: [
       'node_modules',
       'bower_components'
