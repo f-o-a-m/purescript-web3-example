@@ -5,6 +5,7 @@ import Prelude
 import Contracts.SimpleStorage as SimpleStorage
 import Control.Error.Util (note)
 import Control.Monad.Aff (Aff, Error, Milliseconds(..), attempt, delay, forkAff, joinFiber, launchAff, liftEff', try)
+import Control.Monad.Aff.Console (CONSOLE)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION)
@@ -37,6 +38,7 @@ import Thermite as T
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
+import UportUtils
 
 --------------------------------------------------------------------------------
 -- SimpleStorage Class
@@ -124,7 +126,7 @@ inputValToErrorOpt iv = case iv.val of
 
 inputValToOpts :: forall a. InputVal a -> Options.Options TextFieldOption
 inputValToOpts = inputValToValueOpt <> inputValToErrorOpt
-  
+
 listenToInput :: forall action. (action -> T.EventHandler) -> (String -> action) -> Options.Options TextFieldOption
 listenToInput dispatch ctr =
   TextField.onChange := (EventHandlerOpt $ R.handle $ \e -> dispatch $ ctr (unsafeCoerce e).target.value)
@@ -246,7 +248,7 @@ countFormSpec = T.simpleSpec performAction render
             mbAddr <- lift $ readAddress provider.provider
             for_ mbAddr \addr ->
               void $ T.modifyState _{userAddress = {val: Right addr, input: show addr}}
-            
+
 
     performAction (UpdateAddress input) _ _ = do
       let
@@ -276,8 +278,12 @@ countFormClass =
   loadInitial = do
     p <- mkUport
     pure $ initialCountFormState p
-  componentWillMount :: forall eff. R.ComponentWillMount CountFormProps CountFormState (eth :: ETH | eff)
+  componentWillMount :: forall eff. R.ComponentWillMount CountFormProps CountFormState (eth :: ETH, uport :: UPORT, console :: CONSOLE, exception :: EXCEPTION | eff)
   componentWillMount this = void $ launchAff $ do
+    c <- liftEff $  connect
+          $ withAppName (AppName "Web3 example")
+          >>> withNetwork rinkeby
+    dumbRequestCredentials c
     state <- liftEff $ R.readState this
     let p = state.provider.provider
     when (providerMustSetSender state.provider.pType)
@@ -295,7 +301,7 @@ completeAddressField
   :: forall eff
   . R.ReactThis CountFormProps CountFormState
   -> Provider
-  -> Aff (PropsAndStateRW ( eth :: ETH | eff)) Unit
+  -> Aff (PropsAndStateRW ( eth :: ETH, uport :: UPORT, console :: CONSOLE | eff)) Unit
 completeAddressField this p = do
   mbAddr <- readAddress p
   for_ mbAddr \addr -> do
