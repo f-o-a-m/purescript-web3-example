@@ -11,7 +11,9 @@ It should be easy to clone this repo as a template for other web3 enabled applic
 variables to your application, as well as all of the loaders one would need for a real world purescript application.
 
 ## Requirements
-- [metamask](https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn) chrome extension
+Note: In addition to the following requirements, because the example app now depends on being able to use uPort if the user desires, *you must point your metamask account to a Rinkeby node*
+
+- [metamask](https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn) chrome extension.
 - an ethereum address (with a nonzero ether balance) known to metamask on some network
 - an address for an uploaded SimpleStorage contract (see ./contracts/src/SimpleStorage.sol)
 - psc-package
