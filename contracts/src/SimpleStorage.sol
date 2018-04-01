@@ -1,4 +1,4 @@
-pragma solidity ^0.4.15;
+pragma solidity ^0.4.21;
 
 contract SimpleStorage {
     uint public count;
@@ -7,6 +7,6 @@ contract SimpleStorage {
 
     function setCount(uint _count) public {
         count = _count;
-        CountSet(_count);
+        emit CountSet(_count);
     }
 }

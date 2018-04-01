@@ -124,7 +124,7 @@ inputValToErrorOpt iv = case iv.val of
 
 inputValToOpts :: forall a. InputVal a -> Options.Options TextFieldOption
 inputValToOpts = inputValToValueOpt <> inputValToErrorOpt
-  
+
 listenToInput :: forall action. (action -> T.EventHandler) -> (String -> action) -> Options.Options TextFieldOption
 listenToInput dispatch ctr =
   TextField.onChange := (EventHandlerOpt $ R.handle $ \e -> dispatch $ ctr (unsafeCoerce e).target.value)
@@ -148,7 +148,7 @@ countFormSpec = T.simpleSpec performAction render
           [ D.text $ "Contract address: " <> show props.contractAddress]
       , D.h2
           [ P.className "count-container" ]
-          [ D.text $ "Current Count: " <> case state.currentCount of 
+          [ D.text $ "Current Count: " <> case state.currentCount of
               Nothing -> "loading ..."
               Just (Left err) -> "error occurred while fetching count, retrying ..."
               Just (Right c) -> show c
@@ -232,7 +232,7 @@ countFormSpec = T.simpleSpec performAction render
         T.modifyState _
           { count = emptyInputVal :: InputVal Count
           , status = Just case mbTxHash of
-              Left err -> FailedToCreateTransaction err 
+              Left err -> FailedToCreateTransaction err
               Right txHash -> TransactionWasCreated txHash
           }
 
@@ -246,7 +246,7 @@ countFormSpec = T.simpleSpec performAction render
             mbAddr <- lift $ readAddress provider.provider
             for_ mbAddr \addr ->
               void $ T.modifyState _{userAddress = {val: Right addr, input: show addr}}
-            
+
 
     performAction (UpdateAddress input) _ _ = do
       let
@@ -328,7 +328,7 @@ readCountAndUpdate this p = do
     Right (Left err) ->
       liftEff $ R.transformState this _{currentCount = Just $ Left $ FailedToFetchCountWithCallError err}
     Right (Right count) ->
-      liftEff $ R.transformState this \s -> 
+      liftEff $ R.transformState this \s ->
         -- NOTE: besides updating `currentCount` here we also try to detect if the value
         -- is new, so `status` is updated in same way as it would in `countEventFilter`
         let nextCount = Just $ Right count
@@ -366,7 +366,7 @@ countEventFilter this p = do
     Left err -> do
       -- # Error from aff
       -- there is an issue in ps-web3 when sendAsync is called it might fail but that's not handled
-      -- so it propagates up to this point. ideally it should not happen and should be decoded into 
+      -- so it propagates up to this point. ideally it should not happen and should be decoded into
       -- Web3Error so `try` is not used to catch errors from `sendAsync`
       pure $ Left err
     Right (Left err) ->

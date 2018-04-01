@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import App.CountForm (CountFormProps, countFormClass, ExtendedProvider)
+import App.CountForm (CountFormProps, countFormClass)
 import App.MaterialUI (muiThemeProviderClass)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Except (runExcept)
@@ -16,11 +16,11 @@ import Data.Either (hush)
 import Data.Foldable (for_)
 import Data.Foreign (Foreign, readString)
 import Data.Maybe (Maybe(..))
-import Network.Ethereum.Web3 (Address, metamaskProvider, mkAddress, mkHexString)
+import Network.Ethereum.Web3 (Address, mkAddress, mkHexString)
 import Partial.Unsafe (unsafeCrashWith)
 import React as R
 import ReactDOM (render)
-import Network.Ethereum.Uport (AppName(..), UPORT, connect, rinkeby, withAppName, withNetwork, getProvider)
+import Network.Ethereum.Uport (UPORT)
 import Control.Monad.Eff.Exception (EXCEPTION)
 
 main :: forall eff. Eff (dom :: DOM, exception :: EXCEPTION, uport :: UPORT | eff) Unit
