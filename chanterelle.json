@@ -1,0 +1,13 @@
+{
+    "name": "purescript-web3-tests",
+    "version": "0.0.1",
+    "source-dir": "contracts",
+    "modules": [ "SimpleStorage"
+              ],
+    "dependencies": [],
+    "solc-output-selection": [],
+    "purescript-generator": {
+        "output-path": "src",
+        "module-prefix": "Contracts"
+    }
+}
